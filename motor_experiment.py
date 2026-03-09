@@ -46,30 +46,41 @@ DEFAULT_SINGLE_STYLE_CFG = {
 
 SINGLE_STYLE_CFG = {
     "sport": {
+        "ppo": {
+            "init_explore_decay": 0.86,
+            "max_explore": 1.00,
+            "entropy_coef": 0.00028,
+            "entropy_coef_max": 0.0018,
+            "entropy_adapt_rate": 0.06,
+            "entropy_kl_low_ratio": 0.75,
+            "entropy_kl_high_ratio": 1.25,
+            "explore_expand": 1.04,
+            "explore_shrink": 0.95,
+        },
         "energy_stage": {
-            "e_start": 0.90,
-            "e_end": 2.25,
-            "lr_s": 0.42,
-            "lr_d": 0.05,
-            "tgt_s": 0.08,
-            "tgt_d": 0.56,
-            "patience": 6,
+            "e_start": 0.95,
+            "e_end": 2.40,
+            "lr_s": 0.48,
+            "lr_d": 0.06,
+            "tgt_s": 0.07,
+            "tgt_d": 0.54,
+            "patience": 7,
             "eval_interval": 14,
         },
         "net_saving_floor_pct": 0.0,
         "recover_drop_tol_pct": 6.0,
         "drop_seed_zero": True,
         "polish": {
-            "episodes_fast": 14,
+            "episodes_fast": 18,
             "episodes_full": 36,
-            "max_explore": 0.18,
-            "stage_weight": 1.35,
-            "e_start": 1.30,
-            "e_end": 1.95,
-            "lr_s": 0.50,
-            "lr_d": 0.07,
+            "max_explore": 0.22,
+            "stage_weight": 1.45,
+            "e_start": 1.35,
+            "e_end": 2.10,
+            "lr_s": 0.54,
+            "lr_d": 0.08,
             "tgt_s": 0.07,
-            "tgt_d": 0.56,
+            "tgt_d": 0.54,
             "patience": 4,
             "eval_interval": 8,
             "stage_name": "SportPolish",
@@ -992,7 +1003,7 @@ def run_experiment():
         is_eco_single_style = bool(single_style_focus and (single_style_name == "eco"))
         boost_threshold = 0.40 if fast_run else 0.45
         if is_sport_single_style:
-            boost_threshold = 0.52 if fast_run else 0.58
+            boost_threshold = 0.44 if fast_run else 0.50
         elif is_eco_single_style:
             boost_threshold = 0.45 if fast_run else 0.52
         if seed_summary["tracking_ok"] and seed_summary["saving_ok"] and (seed_summary["mean_saving"] < boost_threshold):
@@ -1016,18 +1027,18 @@ def run_experiment():
                 boost_plan = [
                     {
                         "name": "EfficiencyBoost",
-                        "episodes": 10 if fast_run else 28,
-                        "e_start": 1.28,
-                        "e_end": 1.85,
-                        "lr_s": 0.46,
-                        "lr_d": 0.07,
+                        "episodes": 14 if fast_run else 34,
+                        "e_start": 1.32,
+                        "e_end": 2.05,
+                        "lr_s": 0.52,
+                        "lr_d": 0.08,
                         "tgt_s": 0.08,
-                        "tgt_d": 0.60,
+                        "tgt_d": 0.56,
                         "patience": 3,
                         "eval_interval": 6,
                     }
                 ]
-                low_saving_trigger = 0.42 if fast_run else 0.48
+                low_saving_trigger = 0.34 if fast_run else 0.40
             elif is_eco_single_style:
                 boost_plan = [
                     {
@@ -1062,13 +1073,13 @@ def run_experiment():
                 if is_sport_single_style:
                     boost_plan[-1] = {
                         "name": "EfficiencyBoostStrong",
-                        "episodes": 16 if fast_run else 44,
-                        "e_start": 1.45,
-                        "e_end": 2.20,
-                        "lr_s": 0.42,
-                        "lr_d": 0.06,
+                        "episodes": 22 if fast_run else 52,
+                        "e_start": 1.50,
+                        "e_end": 2.35,
+                        "lr_s": 0.48,
+                        "lr_d": 0.07,
                         "tgt_s": 0.08,
-                        "tgt_d": 0.62,
+                        "tgt_d": 0.58,
                         "patience": 4,
                         "eval_interval": 8,
                     }
@@ -1119,7 +1130,7 @@ def run_experiment():
                         and post_boost_summary["saving_ok"]
                         and (
                             (
-                                gross_delta > 0.03
+                                gross_delta > 0.02
                                 and total_worst_delta >= -0.02
                                 and worst_delta >= -0.02
                                 and worst_style_delta >= -0.02
@@ -1128,7 +1139,7 @@ def run_experiment():
                                 and recover_worst_delta >= -0.60
                             )
                             or (
-                                robust_delta > 0.03
+                                robust_delta > 0.02
                                 and gross_delta >= -0.01
                                 and net_worst_delta >= -0.02
                                 and net_worst_style_delta >= -0.02
