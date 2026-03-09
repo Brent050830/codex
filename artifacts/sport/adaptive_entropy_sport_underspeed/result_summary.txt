@@ -1,0 +1,23 @@
+Run: adaptive_entropy_sport_underspeed
+Style: sport
+
+Best seed: 1
+Feasible tracking+saving policy: true
+
+Key metrics:
+- Saving(E/Dist): 0.457124%
+- Saving(Net E/Dist): 0.627938%
+- Saving(Total): 0.685589%
+- Recover delta: 6.207572%
+- Speed MAE: 0.049159
+- Distance MAE: 0.678617
+
+Constraint success:
+- Tracking success ratio: 100.0%
+- Tracking+saving success ratio: 100.0%
+- Bias guard success ratio: 100.0%
+- Lagrange underspeed mean: 0.000000
+
+Artifacts:
+- best_motor_ppo_meta.json
+- best_motor_ppo.pt
