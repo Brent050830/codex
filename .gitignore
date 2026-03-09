@@ -1,0 +1,12 @@
+# 忽略所有的日志文件
+*.log
+
+# 忽略 artifacts 文件夹及其内部所有内容
+artifacts/
+
+# --- 下面是额外附赠的 Python 和 Simulink 常见垃圾文件屏蔽 ---
+__pycache__/
+*.pyc
+*.slxc
+*.sim
+slprj/
