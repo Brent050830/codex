@@ -408,14 +408,14 @@ class PPOContinuous:
         batch_size = latest.size(0)
         center = torch.zeros((batch_size, self.action_dim), dtype=latest.dtype, device=latest.device)
         scale = self.action_bound.expand(batch_size, -1).clone()
-        if latest.size(1) < (24 + self.context_action_hint_dim):
+        if latest.size(1) < (28 + self.context_action_hint_dim):
             return center, scale
 
-        residual_scale_hint = torch.clamp(latest[:, 25], 0.35, 1.0)
-        regen_center_hint = torch.clamp(latest[:, 27], -1.0 + 0.04, 1.0 - 0.04)
-        regen_range_hint = torch.clamp(latest[:, 28], 0.12, 0.65)
-        coast_center_hint = torch.clamp(latest[:, 29], -1.0 + 0.04, 1.0 - 0.04)
-        coast_range_hint = torch.clamp(latest[:, 30], 0.12, 0.65)
+        residual_scale_hint = torch.clamp(latest[:, 29], 0.35, 1.0)
+        regen_center_hint = torch.clamp(latest[:, 31], -1.0 + 0.04, 1.0 - 0.04)
+        regen_range_hint = torch.clamp(latest[:, 32], 0.12, 0.65)
+        coast_center_hint = torch.clamp(latest[:, 33], -1.0 + 0.04, 1.0 - 0.04)
+        coast_range_hint = torch.clamp(latest[:, 34], 0.12, 0.65)
         residual_scale = torch.clamp(
             self.action_bound[:, 0] * residual_scale_hint.unsqueeze(1),
             0.28 * self.action_bound[:, 0],

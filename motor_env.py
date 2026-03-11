@@ -6,7 +6,18 @@ import numpy as np
 MPS_TO_KMH = 3.6
 
 
-def build_random_road_profiles(horizon, max_speed, rng, slope_segments=(2, 4), curve_segments=(2, 5)):
+def build_random_road_profiles(
+    horizon,
+    max_speed,
+    rng,
+    slope_segments=(2, 4),
+    curve_segments=(2, 5),
+    grade_range=(-0.06, 0.08),
+    slope_length_range=(18, 55),
+    curve_width_range=(10, 30),
+    curve_drop_range=(0.12, 0.28),
+    min_curve_speed_ratio=0.54,
+):
     """
     作用：生成训练或评估道路使用的随机坡度与弯道限速曲线。
     输入：horizon/max_speed/rng: 道路长度、限速与随机源；其余参数为段数范围。
@@ -16,21 +27,21 @@ def build_random_road_profiles(horizon, max_speed, rng, slope_segments=(2, 4), c
     n_slope = int(rng.integers(slope_segments[0], slope_segments[1] + 1))
     for _ in range(n_slope):
         start = int(rng.integers(0, horizon - 20))
-        length = int(rng.integers(18, 55))
+        length = int(rng.integers(slope_length_range[0], slope_length_range[1]))
         end = min(horizon, start + length)
-        grade = float(rng.uniform(-0.06, 0.08))
+        grade = float(rng.uniform(grade_range[0], grade_range[1]))
         slope[start:end] = grade
     slope = np.convolve(slope, np.ones(9, dtype=np.float32) / 9.0, mode="same").astype(np.float32)
-    slope = np.clip(slope, -0.08, 0.10)
+    slope = np.clip(slope, min(-0.10, float(grade_range[0]) - 0.02), max(0.10, float(grade_range[1]) + 0.02))
 
     curve_speed_limit = np.full(horizon + 1, max_speed, dtype=np.float32)
     n_curve = int(rng.integers(curve_segments[0], curve_segments[1] + 1))
-    min_curve_speed = 0.54 * max_speed
-    max_drop_low = 0.12 * max_speed
-    max_drop_high = 0.28 * max_speed
+    min_curve_speed = float(min_curve_speed_ratio) * max_speed
+    max_drop_low = float(curve_drop_range[0]) * max_speed
+    max_drop_high = float(curve_drop_range[1]) * max_speed
     for _ in range(n_curve):
         center = int(rng.integers(20, horizon - 20))
-        width = int(rng.integers(10, 30))
+        width = int(rng.integers(curve_width_range[0], curve_width_range[1]))
         max_drop = float(rng.uniform(max_drop_low, max_drop_high))
         idx = np.arange(horizon + 1)
         dip = max_drop * np.exp(-0.5 * ((idx - center) / max(width, 1)) ** 2)
@@ -1015,7 +1026,7 @@ class DriverReferenceEnergyEnv:
         self.signed_dist_err_int = 0.0
         self._apply_style_control_profile()
 
-        self.base_state_dim = 31
+        self.base_state_dim = 35
         self.state_dim = self.base_state_dim * self.obs_stack
         self.action_dim = 3
         self._obs_history = deque(maxlen=self.obs_stack)
@@ -1482,6 +1493,34 @@ class DriverReferenceEnergyEnv:
             ref_torque_p1=ref_torque_p1,
             style_name=style_name,
         )
+        torque_trend = ref_torque_p1 - ref_torque
+        progress_feature = float(np.clip(0.35 * (step_idx / max(self.horizon, 1)), 0.0, 0.35))
+        accel_phase = float(
+            np.clip(
+                max(ref_torque, 0.0) / 18.0
+                + 0.45 * max(torque_trend, 0.0) / max(self.max_torque, 1e-8),
+                0.0,
+                1.0,
+            )
+        )
+        decel_phase = float(
+            np.clip(
+                max(-ref_torque, 0.0) / 12.0
+                + 0.55 * float(decel_hint)
+                + 0.25 * max(self.vehicle["speed"] - ref_speed, 0.0),
+                0.0,
+                1.0,
+            )
+        )
+        coastable_phase = float(
+            np.clip(
+                0.70 * max(0.0, 0.5 * (coast_center_hint + 1.0))
+                + 0.30 * np.clip((coast_range_hint - 0.12) / 0.43, 0.0, 1.0),
+                0.0,
+                1.0,
+            )
+        )
+        torque_trend_norm = float(np.clip(torque_trend / self.max_torque, -1.0, 1.0))
         return np.array(
             [
                 self.vehicle["speed"] / self.max_speed,
@@ -1491,7 +1530,11 @@ class DriverReferenceEnergyEnv:
                 ref_torque / self.max_torque,
                 speed_err / self.max_speed,
                 dist_err / dist_scale,
-                step_idx / self.horizon,
+                progress_feature,
+                accel_phase,
+                decel_phase,
+                coastable_phase,
+                torque_trend_norm,
                 self.prev_residual / self.residual_limit,
                 self.scenario.slope_profile[min(step_idx, self.horizon)] / 0.12,
                 self.reference["curve_speed_limit"][min(step_idx, self.horizon)] / self.max_speed,

@@ -237,11 +237,17 @@ def run_experiment():
     horizon = 220
     dt = 0.1
     max_speed_mps = 80.0 / MPS_TO_KMH
-    num_train_roads = 3 if fast_run else 5
-    num_eval_roads = 2 if fast_run else 3
+    num_train_roads = 5 if fast_run else 8
+    num_eval_roads = 3 if fast_run else 4
+    num_stress_roads = 3 if fast_run else 4
     if long_run:
-        num_train_roads = int(os.getenv("NUM_TRAIN_ROADS", "7"))
-        num_eval_roads = int(os.getenv("NUM_EVAL_ROADS", "4"))
+        num_train_roads = int(os.getenv("NUM_TRAIN_ROADS", "10"))
+        num_eval_roads = int(os.getenv("NUM_EVAL_ROADS", "5"))
+        num_stress_roads = int(os.getenv("NUM_STRESS_ROADS", "6"))
+    else:
+        num_train_roads = int(os.getenv("NUM_TRAIN_ROADS", str(num_train_roads)))
+        num_eval_roads = int(os.getenv("NUM_EVAL_ROADS", str(num_eval_roads)))
+        num_stress_roads = int(os.getenv("NUM_STRESS_ROADS", str(num_stress_roads)))
     # ????????????????????????????????????
     multi_style = False
     target_driver_style = os.getenv("TARGET_DRIVER_STYLE", "eco").strip().lower()
@@ -268,12 +274,91 @@ def run_experiment():
             if Path(candidate).exists():
                 motor_map_csv = str(Path(candidate))
                 break
-    road_rng = np.random.default_rng(2026)
+    road_seed_env = os.getenv("ROAD_SEED", "").strip()
+    road_seed = int(road_seed_env) if road_seed_env != "" else int.from_bytes(os.urandom(8), "little") % (2**32 - 1)
+    road_rng = np.random.default_rng(road_seed)
+
+    train_profile_pool = [
+        {},
+        {
+            "slope_segments": (3, 6),
+            "curve_segments": (3, 6),
+            "grade_range": (-0.07, 0.09),
+            "slope_length_range": (20, 64),
+            "curve_width_range": (10, 28),
+            "curve_drop_range": (0.14, 0.30),
+            "min_curve_speed_ratio": 0.52,
+        },
+        {
+            "slope_segments": (4, 7),
+            "curve_segments": (2, 4),
+            "grade_range": (-0.09, 0.10),
+            "slope_length_range": (18, 72),
+            "curve_width_range": (12, 34),
+            "curve_drop_range": (0.10, 0.24),
+            "min_curve_speed_ratio": 0.58,
+        },
+        {
+            "slope_segments": (2, 4),
+            "curve_segments": (4, 8),
+            "grade_range": (-0.05, 0.07),
+            "slope_length_range": (16, 48),
+            "curve_width_range": (8, 22),
+            "curve_drop_range": (0.18, 0.34),
+            "min_curve_speed_ratio": 0.46,
+        },
+    ]
+    eval_profile_pool = [
+        {},
+        {
+            "slope_segments": (3, 5),
+            "curve_segments": (3, 6),
+            "grade_range": (-0.07, 0.09),
+            "slope_length_range": (20, 60),
+            "curve_width_range": (10, 26),
+            "curve_drop_range": (0.14, 0.30),
+            "min_curve_speed_ratio": 0.52,
+        },
+    ]
+    stress_profile_pool = [
+        {
+            "slope_segments": (5, 8),
+            "curve_segments": (5, 8),
+            "grade_range": (-0.10, 0.12),
+            "slope_length_range": (16, 78),
+            "curve_width_range": (7, 20),
+            "curve_drop_range": (0.22, 0.42),
+            "min_curve_speed_ratio": 0.38,
+        },
+        {
+            "slope_segments": (6, 9),
+            "curve_segments": (3, 5),
+            "grade_range": (-0.12, 0.13),
+            "slope_length_range": (14, 84),
+            "curve_width_range": (10, 24),
+            "curve_drop_range": (0.16, 0.32),
+            "min_curve_speed_ratio": 0.48,
+        },
+        {
+            "slope_segments": (3, 5),
+            "curve_segments": (6, 10),
+            "grade_range": (-0.07, 0.10),
+            "slope_length_range": (18, 52),
+            "curve_width_range": (6, 18),
+            "curve_drop_range": (0.24, 0.45),
+            "min_curve_speed_ratio": 0.34,
+        },
+    ]
+
+    def sample_road_profile(profile_pool):
+        cfg = dict(profile_pool[int(road_rng.integers(0, len(profile_pool)))])
+        return build_random_road_profiles(horizon, max_speed_mps, road_rng, **cfg)
 
     train_pairs = []
     eval_pairs = []
+    stress_eval_pairs = []
     for i in range(num_train_roads):
-        slope, curve_vlim = build_random_road_profiles(horizon, max_speed_mps, road_rng)
+        slope, curve_vlim = sample_road_profile(train_profile_pool)
         for style in driver_styles:
             scenario_i = StraightRoadScenario(
                 horizon=horizon,
@@ -287,7 +372,7 @@ def run_experiment():
             ref_i = scenario_i.simulate_driver_reference(style_name=style, rng=road_rng)
             train_pairs.append((scenario_i, ref_i))
     for i in range(num_eval_roads):
-        slope, curve_vlim = build_random_road_profiles(horizon, max_speed_mps, road_rng)
+        slope, curve_vlim = sample_road_profile(eval_profile_pool)
         for style in driver_styles:
             scenario_i = StraightRoadScenario(
                 horizon=horizon,
@@ -300,6 +385,20 @@ def run_experiment():
             )
             ref_i = scenario_i.simulate_driver_reference(style_name=style, rng=road_rng)
             eval_pairs.append((scenario_i, ref_i))
+    for i in range(num_stress_roads):
+        slope, curve_vlim = sample_road_profile(stress_profile_pool)
+        for style in driver_styles:
+            scenario_i = StraightRoadScenario(
+                horizon=horizon,
+                dt=dt,
+                slope_profile=slope,
+                curve_speed_limit=curve_vlim,
+                scenario_name=f"stress_eval_{i}_{style}",
+                driver_style=style,
+                motor_map_csv=motor_map_csv if motor_map_csv else None,
+            )
+            ref_i = scenario_i.simulate_driver_reference(style_name=style, rng=road_rng)
+            stress_eval_pairs.append((scenario_i, ref_i))
 
     canonical_eval_ref = eval_pairs[0][1]
     baseline_eval_epd = float(np.mean([x[1]["energy_per_dist"] for x in eval_pairs]))
@@ -1728,6 +1827,11 @@ def run_experiment():
         style_saving_total_iso = {}
         style_tracking_ok = {}
         style_smooth_ok = {}
+        stress_saving_iso_epd_each = []
+        stress_saving_net_iso_epd_each = []
+        stress_recover_delta_each = []
+        stress_tracking_ok_each = []
+        stress_smooth_ok_each = []
         canonical_rollout = None
         canonical_ref = None
 
@@ -1736,6 +1840,16 @@ def run_experiment():
             agent,
             eval_pairs,
             **eval_limits_strict,
+        )
+        stress_entries = (
+            evaluate_agent_on_pairs(
+                env,
+                agent,
+                stress_eval_pairs,
+                **eval_limits_strict,
+            )
+            if len(stress_eval_pairs) > 0
+            else []
         )
         for eval_idx, entry in enumerate(eval_entries):
             rollout = entry["rollout"]
@@ -1796,6 +1910,13 @@ def run_experiment():
             style_saving_total_iso.setdefault(style_name, []).append(float(metrics.get("saving_total_isochronous_pct", metrics["saving_total_pct"])))
             style_tracking_ok.setdefault(style_name, []).append(bool(metrics["tracking_ok"]))
             style_smooth_ok.setdefault(style_name, []).append(bool(metrics["smooth_ok"]))
+        for entry in stress_entries:
+            metrics = entry["metrics"]
+            stress_saving_iso_epd_each.append(float(metrics.get("saving_isochronous_pct", metrics["saving_epd_pct"])))
+            stress_saving_net_iso_epd_each.append(float(metrics.get("saving_net_isochronous_pct", metrics["saving_net_epd_pct"])))
+            stress_recover_delta_each.append(float(metrics["recover_delta_pct"]))
+            stress_tracking_ok_each.append(bool(metrics["tracking_ok"]))
+            stress_smooth_ok_each.append(bool(metrics["smooth_ok"]))
 
         seed_saving_epd = float(np.mean(saving_epd_each))
         seed_saving_epd_raw = float(np.mean(saving_epd_raw_each))
@@ -1839,6 +1960,14 @@ def run_experiment():
         seed_bound_violation_mean = float(np.mean(bound_violation_mean_each))
         seed_bound_violation_max = float(np.max(bound_violation_max_each))
         seed_smooth_ok = bool(np.all(np.array(smooth_ok_each)))
+        seed_stress_saving_iso_epd = float(np.mean(stress_saving_iso_epd_each)) if len(stress_saving_iso_epd_each) > 0 else seed_saving_iso_epd
+        seed_stress_saving_net_iso_epd = float(np.mean(stress_saving_net_iso_epd_each)) if len(stress_saving_net_iso_epd_each) > 0 else seed_saving_net_iso_epd
+        seed_stress_worst_saving_iso_epd = float(np.min(stress_saving_iso_epd_each)) if len(stress_saving_iso_epd_each) > 0 else seed_saving_iso_epd
+        seed_stress_worst_saving_net_iso_epd = float(np.min(stress_saving_net_iso_epd_each)) if len(stress_saving_net_iso_epd_each) > 0 else seed_saving_net_iso_epd
+        seed_stress_recover_delta = float(np.mean(stress_recover_delta_each)) if len(stress_recover_delta_each) > 0 else seed_recover_delta
+        seed_stress_worst_recover_delta = float(np.min(stress_recover_delta_each)) if len(stress_recover_delta_each) > 0 else seed_recover_delta
+        seed_stress_tracking_ok = bool(np.all(np.array(stress_tracking_ok_each))) if len(stress_tracking_ok_each) > 0 else True
+        seed_stress_smooth_ok = bool(np.all(np.array(stress_smooth_ok_each))) if len(stress_smooth_ok_each) > 0 else True
         style_mean_saving_epd = {k: float(np.mean(v)) for k, v in style_saving_epd.items()}
         style_mean_saving_iso_epd = {k: float(np.mean(v)) for k, v in style_saving_iso_epd.items()}
         style_mean_saving_net_epd = {k: float(np.mean(v)) for k, v in style_saving_net_epd.items()}
@@ -1926,15 +2055,27 @@ def run_experiment():
         recover_shortfall = max(0.0, -seed_worst_recover_delta - recover_drop_tol_pct)
         seed_slow_bias_penalty = 0.65 * speed_bias_excess + 0.35 * dist_bias_excess
         seed_window_payback_penalty = (
-            0.12 * max(0.0, -seed_worst_window_saving)
-            + 0.35 * seed_negative_window_ratio
-            + 0.06 * seed_front_back_saving_gap
+            0.14 * max(0.0, -seed_worst_window_saving)
+            + 0.45 * seed_negative_window_ratio
+            + 0.10 * seed_front_back_saving_gap
         )
+        seed_stress_penalty = (
+            0.08 * max(0.0, 0.12 - seed_stress_saving_iso_epd)
+            + 0.05 * max(0.0, 0.10 - seed_stress_saving_net_iso_epd)
+            + 0.10 * max(0.0, -seed_stress_worst_saving_iso_epd)
+            + 0.05 * max(0.0, -seed_stress_worst_saving_net_iso_epd)
+            + 0.03 * max(0.0, -seed_stress_worst_recover_delta - recover_drop_tol_pct)
+        )
+        if not seed_stress_tracking_ok:
+            seed_stress_penalty += 0.20
+        if not seed_stress_smooth_ok:
+            seed_stress_penalty += 0.08
         seed_bias_adjusted_metric = (
             seed_robust_saving_joint
             - 0.45 * seed_slow_bias_penalty
             - 0.08 * recover_shortfall
             - seed_window_payback_penalty
+            - seed_stress_penalty
         )
 
         eval_stats = {
@@ -1957,6 +2098,14 @@ def run_experiment():
             "distance_deficit_m": seed_distance_deficit,
             "distance_comp_energy": seed_distance_comp_energy,
             "kinetic_comp_energy": seed_kinetic_comp_energy,
+            "stress_saving_isochronous_pct": seed_stress_saving_iso_epd,
+            "stress_saving_net_isochronous_pct": seed_stress_saving_net_iso_epd,
+            "stress_worst_saving_isochronous_pct": seed_stress_worst_saving_iso_epd,
+            "stress_worst_saving_net_isochronous_pct": seed_stress_worst_saving_net_iso_epd,
+            "stress_recover_delta_pct": seed_stress_recover_delta,
+            "stress_recover_delta_worst_pct": seed_stress_worst_recover_delta,
+            "stress_tracking_ok": seed_stress_tracking_ok,
+            "stress_smooth_ok": seed_stress_smooth_ok,
             "recover_delta_pct": seed_recover_delta,
             "recover_delta_worst_pct": seed_worst_recover_delta,
             "saving_epd_worst_pct": seed_worst_saving_epd,
@@ -1984,6 +2133,7 @@ def run_experiment():
             "robust_saving_net_pct": float(seed_robust_saving_style_net),
             "robust_saving_joint_pct": float(seed_robust_saving_joint),
             "slow_bias_penalty_pct": float(seed_slow_bias_penalty),
+            "stress_penalty_pct": float(seed_stress_penalty),
             "bias_adjusted_metric_pct": float(seed_bias_adjusted_metric),
             "speed_mae_mean": seed_speed_mae,
             "dist_mae_mean": seed_dist_mae,
@@ -2031,6 +2181,7 @@ def run_experiment():
             f"LowSpeedBenefit(total/gross/net)={seed_low_speed_benefit_total:.2f}%/{seed_low_speed_benefit_epd:.2f}%/{seed_low_speed_benefit_net_epd:.2f}%, "
             f"IsoDebt(dist/Edist/Ekin)={seed_distance_deficit:.3f}m/{seed_distance_comp_energy:.6f}/{seed_kinetic_comp_energy:.6f}, "
             f"RecoverΔ={seed_recover_delta:.2f}% (worst {seed_worst_recover_delta:.2f}%), "
+            f"StressIso={seed_stress_saving_iso_epd:.2f}% / StressNet={seed_stress_saving_net_iso_epd:.2f}% / StressRec={seed_stress_recover_delta:.2f}%, "
             f"StyleWorst={seed_worst_style}:total iso {seed_worst_style_saving_total_iso:.2f}% / gross iso {seed_worst_style_saving_iso_epd:.2f}% / net iso {seed_worst_style_saving_net_iso_epd:.2f}% / rec {seed_worst_style_recover_delta:.2f}%, "
             f"RobustJointSaving={seed_robust_saving_joint:.2f}%, "
             f"BiasAdjMetric={seed_bias_adjusted_metric:.2f}%, "
@@ -2045,7 +2196,7 @@ def run_experiment():
             f"LaunchBias={seed_launch_speed_bias:.3f}m/s({seed_launch_speed_rel_bias:.2f}%), "
             f"DistBias={seed_dist_bias:.3f}m({seed_dist_rel_bias:.2f}%), "
             f"Save(front/back/gap)={seed_front_half_saving:.2f}%/{seed_back_half_saving:.2f}%/{seed_front_back_saving_gap:.2f}%, "
-            f"WorstWin={seed_worst_window_saving:.2f}%, NegWin={seed_negative_window_ratio * 100.0:.1f}%, "
+            f"WorstWin={seed_worst_window_saving:.2f}%, NegWin={seed_negative_window_ratio * 100.0:.1f}%, StressPenalty={seed_stress_penalty:.2f}%, "
             f"SmoothAll={seed_smooth_ok}, "
             f"TrackingAll={seed_tracking_ok}, "
             f"Track+SaveAll={seed_tracking_saving_ok}, "
@@ -2205,6 +2356,13 @@ def run_experiment():
     saving_total_list = np.array([x["saving_total_pct"] for x in eval_stats_list], dtype=np.float32)
     saving_total_raw_list = np.array([x.get("saving_total_raw_pct", x["saving_total_pct"]) for x in eval_stats_list], dtype=np.float32)
     saving_total_iso_list = np.array([x.get("saving_total_isochronous_pct", x["saving_total_pct"]) for x in eval_stats_list], dtype=np.float32)
+    stress_saving_iso_epd_list = np.array([x.get("stress_saving_isochronous_pct", x.get("saving_isochronous_pct", x["saving_epd_pct"])) for x in eval_stats_list], dtype=np.float32)
+    stress_saving_net_iso_epd_list = np.array([x.get("stress_saving_net_isochronous_pct", x.get("saving_net_isochronous_pct", x["saving_net_epd_pct"])) for x in eval_stats_list], dtype=np.float32)
+    stress_worst_saving_iso_epd_list = np.array([x.get("stress_worst_saving_isochronous_pct", x.get("saving_isochronous_pct", x["saving_epd_pct"])) for x in eval_stats_list], dtype=np.float32)
+    stress_worst_saving_net_iso_epd_list = np.array([x.get("stress_worst_saving_net_isochronous_pct", x.get("saving_net_isochronous_pct", x["saving_net_epd_pct"])) for x in eval_stats_list], dtype=np.float32)
+    stress_recover_delta_list = np.array([x.get("stress_recover_delta_pct", x["recover_delta_pct"]) for x in eval_stats_list], dtype=np.float32)
+    stress_tracking_ok_list = np.array([1.0 if x.get("stress_tracking_ok", True) else 0.0 for x in eval_stats_list], dtype=np.float32)
+    stress_smooth_ok_list = np.array([1.0 if x.get("stress_smooth_ok", True) else 0.0 for x in eval_stats_list], dtype=np.float32)
     low_speed_benefit_epd_list = np.array([x.get("low_speed_benefit_epd_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
     low_speed_benefit_net_epd_list = np.array([x.get("low_speed_benefit_net_epd_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
     low_speed_benefit_total_list = np.array([x.get("low_speed_benefit_total_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
@@ -2251,8 +2409,10 @@ def run_experiment():
     print(f"Seeds: {seeds}")
     print(
         f"Train roads x styles: {num_train_roads} x {len(driver_styles)} = {len(train_pairs)}, "
-        f"Unseen eval roads x styles: {num_eval_roads} x {len(driver_styles)} = {len(eval_pairs)}"
+        f"Unseen eval roads x styles: {num_eval_roads} x {len(driver_styles)} = {len(eval_pairs)}, "
+        f"Stress roads x styles: {num_stress_roads} x {len(driver_styles)} = {len(stress_eval_pairs)}"
     )
+    print(f"Road seed: {road_seed}")
     print(f"Two-stage episodes: track={track_episodes}, energy={energy_episodes}")
     print(f"Driver E/Dist (unseen mean): {baseline_eval_epd:.8f}")
     print(f"Agent saving(E/Dist, isochronous) mean (unseen): {np.mean([x.get('saving_isochronous_pct', x['saving_epd_pct']) for x in eval_stats_list]):.2f}%")
@@ -2263,6 +2423,18 @@ def run_experiment():
     print(f"Saving(Net E/Dist) mean +- std: {saving_net_epd_list.mean():.2f}% +- {saving_net_epd_list.std():.2f}%")
     print(f"Saving(Net E/Dist raw) mean +- std: {saving_net_epd_raw_list.mean():.2f}% +- {saving_net_epd_raw_list.std():.2f}%")
     print(f"Saving(Net E/Dist isochronous) mean +- std: {saving_net_iso_epd_list.mean():.2f}% +- {saving_net_iso_epd_list.std():.2f}%")
+    print(
+        f"Stress Saving(E/Dist isochronous) mean +- std: {stress_saving_iso_epd_list.mean():.2f}% +- {stress_saving_iso_epd_list.std():.2f}%, "
+        f"worst mean {stress_worst_saving_iso_epd_list.mean():.2f}%"
+    )
+    print(
+        f"Stress Saving(Net E/Dist isochronous) mean +- std: {stress_saving_net_iso_epd_list.mean():.2f}% +- {stress_saving_net_iso_epd_list.std():.2f}%, "
+        f"worst mean {stress_worst_saving_net_iso_epd_list.mean():.2f}%"
+    )
+    print(
+        f"Stress Recover delta mean +- std: {stress_recover_delta_list.mean():.2f}% +- {stress_recover_delta_list.std():.2f}%, "
+        f"Tracking {stress_tracking_ok_list.mean() * 100.0:.1f}%, Smooth {stress_smooth_ok_list.mean() * 100.0:.1f}%"
+    )
     print(f"Recover delta mean +- std: {recover_delta_list.mean():.2f}% +- {recover_delta_list.std():.2f}%")
     print(f"Worst-style saving mean +- std: {worst_style_saving_list.mean():.2f}% +- {worst_style_saving_list.std():.2f}%")
     print(f"RobustStyleSaving(Total) mean +- std: {robust_saving_total_list.mean():.2f}% +- {robust_saving_total_list.std():.2f}%")
@@ -2332,11 +2504,14 @@ def run_experiment():
         "seeds": seeds,
         "track_episodes": int(track_episodes),
         "energy_episodes": int(energy_episodes),
+        "road_seed": int(road_seed),
         "num_train_roads": int(num_train_roads),
         "num_eval_roads": int(num_eval_roads),
+        "num_stress_roads": int(num_stress_roads),
         "driver_styles": driver_styles,
         "num_train_scenarios": int(len(train_pairs)),
         "num_eval_scenarios": int(len(eval_pairs)),
+        "num_stress_scenarios": int(len(stress_eval_pairs)),
         "driver_total_energy_eval_mean": float(baseline_eval_total_energy),
         "driver_energy_per_dist_eval_mean": float(baseline_eval_epd),
         "motor_map_csv": motor_map_csv if motor_map_csv else None,
@@ -2387,6 +2562,18 @@ def run_experiment():
         "saving_total_raw_std_pct": float(saving_total_raw_list.std()),
         "saving_total_isochronous_mean_pct": float(saving_total_iso_list.mean()),
         "saving_total_isochronous_std_pct": float(saving_total_iso_list.std()),
+        "stress_saving_isochronous_mean_pct": float(stress_saving_iso_epd_list.mean()),
+        "stress_saving_isochronous_std_pct": float(stress_saving_iso_epd_list.std()),
+        "stress_worst_saving_isochronous_mean_pct": float(stress_worst_saving_iso_epd_list.mean()),
+        "stress_worst_saving_isochronous_std_pct": float(stress_worst_saving_iso_epd_list.std()),
+        "stress_saving_net_isochronous_mean_pct": float(stress_saving_net_iso_epd_list.mean()),
+        "stress_saving_net_isochronous_std_pct": float(stress_saving_net_iso_epd_list.std()),
+        "stress_worst_saving_net_isochronous_mean_pct": float(stress_worst_saving_net_iso_epd_list.mean()),
+        "stress_worst_saving_net_isochronous_std_pct": float(stress_worst_saving_net_iso_epd_list.std()),
+        "stress_recover_delta_mean_pct": float(stress_recover_delta_list.mean()),
+        "stress_recover_delta_std_pct": float(stress_recover_delta_list.std()),
+        "stress_tracking_success_ratio": float(stress_tracking_ok_list.mean()),
+        "stress_smooth_success_ratio": float(stress_smooth_ok_list.mean()),
         "low_speed_benefit_epd_mean_pct": float(low_speed_benefit_epd_list.mean()),
         "low_speed_benefit_epd_std_pct": float(low_speed_benefit_epd_list.std()),
         "low_speed_benefit_net_epd_mean_pct": float(low_speed_benefit_net_epd_list.mean()),
