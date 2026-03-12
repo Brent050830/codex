@@ -670,6 +670,11 @@ class DriverReferenceEnergyEnv:
         "launch_progress_end": 0.10,
         "launch_speed_deadband_mps": 0.06,
         "launch_dist_deadband_m": 0.05,
+        "launch_negative_torque_deadband_ratio": 0.035,
+        "launch_negative_torque_penalty_coef": 0.10,
+        "launch_negative_torque_constraint_scale": 0.70,
+        "launch_negative_torque_streak_gain": 0.28,
+        "launch_negative_torque_phase_scale": 1.35,
         "bias_torque_clip": 0.9,
         "bias_neutral_torque_gain": 0.0,
         "bias_neutral_torque_clip": 0.0,
@@ -709,10 +714,32 @@ class DriverReferenceEnergyEnv:
         "constraint_window_energy_cost_target": 0.08,
         "window_energy_horizon": 12,
         "window_negative_saving_tol": 0.0015,
-        "window_negative_gate_progress": 0.12,
-        "window_negative_streak_gain": 0.22,
-        "window_positive_reward_coef": 0.035,
-        "window_negative_reward_penalty_coef": 0.12,
+        "window_negative_gate_progress": 0.08,
+        "window_negative_streak_gain": 0.35,
+        "segment_tracking_horizon": 12,
+        "segment_tracking_gate_progress": 0.06,
+        "segment_speed_abs_tol_ratio": 0.65,
+        "segment_dist_abs_tol_ratio": 0.60,
+        "segment_speed_bias_tol_ratio": 0.28,
+        "segment_dist_bias_tol_ratio": 0.22,
+        "segment_tracking_constraint_scale": 0.72,
+        "segment_tracking_streak_gain": 0.28,
+        "window_positive_reward_coef": 0.018,
+        "window_negative_reward_penalty_coef": 0.06,
+        "window_constraint_scale": 1.20,
+        "window_positive_saving_cap": 0.015,
+        "window_oversave_penalty_coef": 0.03,
+        "window_oversave_gate_end": 0.55,
+        "window_late_positive_bonus_coef": 0.02,
+        "phase_accel_torque_threshold_ratio": 0.18,
+        "residual_phase_launch_limit_ratio": 0.80,
+        "residual_phase_accel_limit_ratio": 0.78,
+        "residual_phase_cruise_limit_ratio": 0.90,
+        "residual_phase_decel_limit_ratio": 0.72,
+        "efficiency_cruise_reward_scale": 1.12,
+        "efficiency_accel_reward_scale": 0.92,
+        "efficiency_decel_reward_scale": 0.95,
+        "efficiency_load_gate_floor_ratio": 0.12,
     }
     STYLE_CONTROL_PROFILES = {
         "sport": {
@@ -730,6 +757,11 @@ class DriverReferenceEnergyEnv:
             "launch_progress_end": 0.11,
             "launch_speed_deadband_mps": 0.05,
             "launch_dist_deadband_m": 0.04,
+            "launch_negative_torque_deadband_ratio": 0.030,
+            "launch_negative_torque_penalty_coef": 0.11,
+            "launch_negative_torque_constraint_scale": 0.75,
+            "launch_negative_torque_streak_gain": 0.30,
+            "launch_negative_torque_phase_scale": 1.40,
             "bias_torque_clip": 1.00,
             "bias_neutral_torque_gain": 0.022,
             "bias_neutral_torque_clip": 0.65,
@@ -761,10 +793,32 @@ class DriverReferenceEnergyEnv:
             "constraint_window_energy_cost_target": 0.10,
             "window_energy_horizon": 10,
             "window_negative_saving_tol": 0.0010,
-            "window_negative_gate_progress": 0.10,
-            "window_negative_streak_gain": 0.24,
-            "window_positive_reward_coef": 0.030,
-            "window_negative_reward_penalty_coef": 0.14,
+            "window_negative_gate_progress": 0.08,
+            "window_negative_streak_gain": 0.38,
+            "segment_tracking_horizon": 10,
+            "segment_tracking_gate_progress": 0.05,
+            "segment_speed_abs_tol_ratio": 0.62,
+            "segment_dist_abs_tol_ratio": 0.56,
+            "segment_speed_bias_tol_ratio": 0.26,
+            "segment_dist_bias_tol_ratio": 0.20,
+            "segment_tracking_constraint_scale": 0.76,
+            "segment_tracking_streak_gain": 0.30,
+            "window_positive_reward_coef": 0.014,
+            "window_negative_reward_penalty_coef": 0.06,
+            "window_constraint_scale": 1.28,
+            "window_positive_saving_cap": 0.012,
+            "window_oversave_penalty_coef": 0.04,
+            "window_oversave_gate_end": 0.58,
+            "window_late_positive_bonus_coef": 0.025,
+            "phase_accel_torque_threshold_ratio": 0.20,
+            "residual_phase_launch_limit_ratio": 0.84,
+            "residual_phase_accel_limit_ratio": 0.82,
+            "residual_phase_cruise_limit_ratio": 0.88,
+            "residual_phase_decel_limit_ratio": 0.74,
+            "efficiency_cruise_reward_scale": 1.10,
+            "efficiency_accel_reward_scale": 0.96,
+            "efficiency_decel_reward_scale": 1.00,
+            "efficiency_load_gate_floor_ratio": 0.14,
         },
         "normal": {
             "dist_catchup_torque_gain": 0.015,
@@ -774,6 +828,11 @@ class DriverReferenceEnergyEnv:
             "launch_progress_end": 0.10,
             "launch_speed_deadband_mps": 0.06,
             "launch_dist_deadband_m": 0.05,
+            "launch_negative_torque_deadband_ratio": 0.032,
+            "launch_negative_torque_penalty_coef": 0.12,
+            "launch_negative_torque_constraint_scale": 0.82,
+            "launch_negative_torque_streak_gain": 0.34,
+            "launch_negative_torque_phase_scale": 1.45,
             "bias_neutral_torque_gain": 0.012,
             "bias_neutral_torque_clip": 0.35,
             "neg_bias_penalty_coef": 0.025,
@@ -802,13 +861,35 @@ class DriverReferenceEnergyEnv:
             "constraint_underspeed_cost_target": 0.10,
             "constraint_underspeed_rel_speed_tol": 0.0075,
             "constraint_underspeed_rel_dist_tol": 0.0075,
-            "constraint_window_energy_cost_target": 0.07,
+            "constraint_window_energy_cost_target": 0.04,
             "window_energy_horizon": 12,
             "window_negative_saving_tol": 0.0005,
-            "window_negative_gate_progress": 0.08,
-            "window_negative_streak_gain": 0.30,
-            "window_positive_reward_coef": 0.040,
-            "window_negative_reward_penalty_coef": 0.18,
+            "window_negative_gate_progress": 0.04,
+            "window_negative_streak_gain": 0.46,
+            "segment_tracking_horizon": 12,
+            "segment_tracking_gate_progress": 0.04,
+            "segment_speed_abs_tol_ratio": 0.60,
+            "segment_dist_abs_tol_ratio": 0.54,
+            "segment_speed_bias_tol_ratio": 0.24,
+            "segment_dist_bias_tol_ratio": 0.18,
+            "segment_tracking_constraint_scale": 0.88,
+            "segment_tracking_streak_gain": 0.34,
+            "window_positive_reward_coef": 0.014,
+            "window_negative_reward_penalty_coef": 0.07,
+            "window_constraint_scale": 1.45,
+            "window_positive_saving_cap": 0.012,
+            "window_oversave_penalty_coef": 0.04,
+            "window_oversave_gate_end": 0.55,
+            "window_late_positive_bonus_coef": 0.025,
+            "phase_accel_torque_threshold_ratio": 0.17,
+            "residual_phase_launch_limit_ratio": 0.82,
+            "residual_phase_accel_limit_ratio": 0.80,
+            "residual_phase_cruise_limit_ratio": 0.90,
+            "residual_phase_decel_limit_ratio": 0.72,
+            "efficiency_cruise_reward_scale": 1.14,
+            "efficiency_accel_reward_scale": 0.94,
+            "efficiency_decel_reward_scale": 0.96,
+            "efficiency_load_gate_floor_ratio": 0.12,
         },
         "eco": {
             "driver_follow_coef": 0.15,
@@ -825,6 +906,11 @@ class DriverReferenceEnergyEnv:
             "launch_progress_end": 0.09,
             "launch_speed_deadband_mps": 0.06,
             "launch_dist_deadband_m": 0.05,
+            "launch_negative_torque_deadband_ratio": 0.038,
+            "launch_negative_torque_penalty_coef": 0.09,
+            "launch_negative_torque_constraint_scale": 0.65,
+            "launch_negative_torque_streak_gain": 0.26,
+            "launch_negative_torque_phase_scale": 1.30,
             "bias_torque_clip": 0.95,
             "bias_neutral_torque_gain": 0.015,
             "bias_neutral_torque_clip": 0.40,
@@ -857,10 +943,32 @@ class DriverReferenceEnergyEnv:
             "constraint_window_energy_cost_target": 0.09,
             "window_energy_horizon": 14,
             "window_negative_saving_tol": 0.0018,
-            "window_negative_gate_progress": 0.14,
-            "window_negative_streak_gain": 0.20,
-            "window_positive_reward_coef": 0.040,
-            "window_negative_reward_penalty_coef": 0.10,
+            "window_negative_gate_progress": 0.10,
+            "window_negative_streak_gain": 0.30,
+            "segment_tracking_horizon": 14,
+            "segment_tracking_gate_progress": 0.08,
+            "segment_speed_abs_tol_ratio": 0.68,
+            "segment_dist_abs_tol_ratio": 0.62,
+            "segment_speed_bias_tol_ratio": 0.30,
+            "segment_dist_bias_tol_ratio": 0.24,
+            "segment_tracking_constraint_scale": 0.68,
+            "segment_tracking_streak_gain": 0.24,
+            "window_positive_reward_coef": 0.018,
+            "window_negative_reward_penalty_coef": 0.05,
+            "window_constraint_scale": 1.18,
+            "window_positive_saving_cap": 0.014,
+            "window_oversave_penalty_coef": 0.025,
+            "window_oversave_gate_end": 0.52,
+            "window_late_positive_bonus_coef": 0.02,
+            "phase_accel_torque_threshold_ratio": 0.16,
+            "residual_phase_launch_limit_ratio": 0.80,
+            "residual_phase_accel_limit_ratio": 0.78,
+            "residual_phase_cruise_limit_ratio": 0.92,
+            "residual_phase_decel_limit_ratio": 0.74,
+            "efficiency_cruise_reward_scale": 1.16,
+            "efficiency_accel_reward_scale": 0.90,
+            "efficiency_decel_reward_scale": 0.98,
+            "efficiency_load_gate_floor_ratio": 0.10,
         },
     }
 
@@ -988,6 +1096,14 @@ class DriverReferenceEnergyEnv:
         self.window_negative_saving_tol = 0.0015
         self.window_negative_gate_progress = 0.12
         self.window_negative_streak_gain = 0.22
+        self.segment_tracking_horizon = 12
+        self.segment_tracking_gate_progress = 0.06
+        self.segment_speed_abs_tol_ratio = 0.65
+        self.segment_dist_abs_tol_ratio = 0.60
+        self.segment_speed_bias_tol_ratio = 0.28
+        self.segment_dist_bias_tol_ratio = 0.22
+        self.segment_tracking_constraint_scale = 0.72
+        self.segment_tracking_streak_gain = 0.28
         self.window_positive_reward_coef = 0.035
         self.window_negative_reward_penalty_coef = 0.12
         self.constraint_cost_clip = 8.0
@@ -1197,12 +1313,15 @@ class DriverReferenceEnergyEnv:
             dist_err_now / max(self.constraint_dist_tol, 1e-8),
         )
 
-    def _compute_action_limits(self, margin_ratio):
+    def _compute_action_limits(self, margin_ratio, ref_torque=0.0, progress_ratio=None):
         """
         作用：根据当前跟踪裕度动态收紧或放宽 residual 动作边界。
         输入：margin_ratio: 当前约束裕度比值。
         输出：dynamic_limit、pos_limit、neg_limit。
         """
+        if progress_ratio is None:
+            progress_ratio = self.step_count / max(self.horizon - 1, 1)
+
         if self.mode == "energy":
             if margin_ratio <= 0.40:
                 dynamic_limit = self.residual_limit
@@ -1210,6 +1329,17 @@ class DriverReferenceEnergyEnv:
                 dynamic_limit = 0.85 * self.residual_limit
             else:
                 dynamic_limit = 0.60 * self.residual_limit
+            launch_phase = progress_ratio <= self.launch_progress_end
+            decel_phase = ref_torque < -1.5
+            accel_phase = ref_torque > self.phase_accel_torque_threshold_ratio * self.max_torque
+            if launch_phase:
+                dynamic_limit *= self.residual_phase_launch_limit_ratio
+            elif decel_phase:
+                dynamic_limit *= self.residual_phase_decel_limit_ratio
+            elif accel_phase:
+                dynamic_limit *= self.residual_phase_accel_limit_ratio
+            else:
+                dynamic_limit *= self.residual_phase_cruise_limit_ratio
         else:
             dynamic_limit = self.residual_limit
 
@@ -1333,7 +1463,7 @@ class DriverReferenceEnergyEnv:
             speed_buf = 0.12
         return coast_speed_th, coast_dist_th, coast_margin_th, rise_th, speed_buf
 
-    def _semantic_action_hints(self, ref_speed, ref_dist, ref_torque, ref_torque_p1, style_name):
+    def _semantic_action_hints(self, ref_speed, ref_dist, ref_torque, ref_torque_p1, style_name, step_idx=None):
         """
         作用：生成给策略侧动作参数化使用的状态相关动作提示。
         输入：当前参考速度/距离/扭矩与下一步参考扭矩，以及风格名。
@@ -1342,7 +1472,14 @@ class DriverReferenceEnergyEnv:
         speed_err_now = self.vehicle["speed"] - ref_speed
         dist_err_now = self.vehicle["distance"] - ref_dist
         margin_ratio = self._compute_margin_ratio(ref_speed, ref_dist)
-        _, pos_limit, neg_limit = self._compute_action_limits(margin_ratio)
+        if step_idx is None:
+            step_idx = self.step_count
+        progress_ratio = step_idx / max(self.horizon - 1, 1)
+        _, pos_limit, neg_limit = self._compute_action_limits(
+            margin_ratio,
+            ref_torque=ref_torque,
+            progress_ratio=progress_ratio,
+        )
         lagging_ctx = (speed_err_now < -0.10) or (dist_err_now < -0.60)
         ahead_ctx = (speed_err_now > 0.10) or (dist_err_now > 0.60)
 
@@ -1492,6 +1629,7 @@ class DriverReferenceEnergyEnv:
             ref_torque=ref_torque,
             ref_torque_p1=ref_torque_p1,
             style_name=style_name,
+            step_idx=step_idx,
         )
         torque_trend = ref_torque_p1 - ref_torque
         progress_feature = float(np.clip(0.35 * (step_idx / max(self.horizon, 1)), 0.0, 0.35))
@@ -1661,6 +1799,10 @@ class DriverReferenceEnergyEnv:
         self.window_step_distance_hist = deque(maxlen=int(self.window_energy_horizon))
         self.window_ref_distance_hist = deque(maxlen=int(self.window_energy_horizon))
         self.window_negative_streak = 0
+        self.segment_speed_err_hist = deque(maxlen=int(self.segment_tracking_horizon))
+        self.segment_dist_err_hist = deque(maxlen=int(self.segment_tracking_horizon))
+        self.segment_tracking_streak = 0
+        self.launch_negative_torque_streak = 0
         self.driver_pid_state = self.scenario.init_driver_pid_state(style_name=self.scenario.driver_style)
         self.driver_cmd_now = float(self.reference["torque_cmd"][0]) if len(self.reference["torque_cmd"]) > 0 else 0.0
         base_obs = self._encode_state(0)
@@ -2010,13 +2152,10 @@ class DriverReferenceEnergyEnv:
         proposed_action_violation = np.maximum(np.abs(proposed_action) - proposed_bound, 0.0)
         proposed_action_violation_linf = float(np.max(proposed_action_violation))
         margin_ratio = self._compute_margin_ratio(ref_speed_now, ref_dist_now)
-        dynamic_limit, pos_limit, neg_limit = self._compute_action_limits(margin_ratio)
+        progress_ratio = self.step_count / max(self.horizon - 1, 1)
         lagging_ctx = (speed_err_now < -0.10) or (dist_err_now < -0.60)
         ahead_ctx = (speed_err_now > 0.10) or (dist_err_now > 0.60)
         lag_err_now = self._update_bias_state(speed_err_now, dist_err_now)
-        if self.mode == "energy" and lagging_ctx:
-            pos_limit = min(self.residual_limit * 1.15, pos_limit * self.catchup_pos_boost)
-        progress_ratio = self.step_count / max(self.horizon - 1, 1)
 
         if self.driver_pid_state is None:
             self.driver_pid_state = self.scenario.init_driver_pid_state(style_name=self.scenario.driver_style)
@@ -2027,6 +2166,13 @@ class DriverReferenceEnergyEnv:
             step_idx=self.step_count,
         )
         self.driver_cmd_now = float(ref_torque)
+        dynamic_limit, pos_limit, neg_limit = self._compute_action_limits(
+            margin_ratio,
+            ref_torque=ref_torque,
+            progress_ratio=progress_ratio,
+        )
+        if self.mode == "energy" and lagging_ctx:
+            pos_limit = min(self.residual_limit * 1.15, pos_limit * self.catchup_pos_boost)
         p1_idx = min(self.step_count + self.preview_steps[0], self.horizon)
         ref_torque_p1 = float(self.reference["torque_cmd"][min(p1_idx, self.horizon - 1)])
         ref_speed_p1 = (
@@ -2048,6 +2194,7 @@ class DriverReferenceEnergyEnv:
             ref_torque,
             ref_torque_p1,
             style_name,
+            step_idx=self.step_count,
         )
         residual = self._apply_residual_policy(
             raw_residual=np.clip(action[0], -neg_limit, pos_limit),
@@ -2290,6 +2437,8 @@ class DriverReferenceEnergyEnv:
                 )
                 streak_scale = 1.0 + self.window_negative_streak_gain * max(0, self.window_negative_streak - 1)
                 window_energy_constraint_cost = (
+                    self.window_constraint_scale
+                    *
                     window_stage_gate
                     * streak_scale
                     * neg_window_excess
@@ -2299,9 +2448,29 @@ class DriverReferenceEnergyEnv:
                     np.clip(window_energy_constraint_cost, 0.0, self.constraint_cost_clip)
                 )
                 pos_window_gain = max(0.0, rolling_window_saving)
+                early_oversave_gate = float(
+                    np.clip(
+                        (self.window_oversave_gate_end - progress_ratio)
+                        / max(self.window_oversave_gate_end, 1e-8),
+                        0.0,
+                        1.0,
+                    )
+                )
+                late_window_gate = float(
+                    np.clip(
+                        (progress_ratio - 0.45) / 0.55,
+                        0.0,
+                        1.0,
+                    )
+                )
+                oversave_excess = max(0.0, pos_window_gain - self.window_positive_saving_cap)
                 window_energy_reward = window_stage_gate * (
                     self.window_positive_reward_coef * pos_window_gain
                     - self.window_negative_reward_penalty_coef * streak_scale * neg_window_excess
+                )
+                window_energy_reward += (
+                    self.window_late_positive_bonus_coef * late_window_gate * pos_window_gain
+                    - self.window_oversave_penalty_coef * early_oversave_gate * oversave_excess
                 )
         lag_ratio = max(
             max(0.0, -speed_err) / max(self.constraint_speed_tol, 1e-8),
@@ -2341,16 +2510,61 @@ class DriverReferenceEnergyEnv:
             track_gate = max(0.0, 1.0 - min(tracking_margin, 1.5) / 1.5)
             torque_eff_gain = (abs(ref_torque) - abs(self.vehicle["torque"])) / max(self.max_torque, 1e-8)
             torque_eff_gain = float(np.clip(torque_eff_gain, -0.4, 0.4))
-            efficiency_term = self.torque_eff_coef * effective_energy_weight * track_gate * torque_eff_gain
+            ref_positive_torque_ratio = max(ref_torque, 0.0) / max(self.max_torque, 1e-8)
+            launch_phase_gate = float(
+                np.clip(
+                    (self.launch_progress_end - progress_ratio) / max(self.launch_progress_end, 1e-8),
+                    0.0,
+                    1.0,
+                )
+            )
+            accel_phase_gate = float(
+                np.clip(
+                    (ref_positive_torque_ratio - self.phase_accel_torque_threshold_ratio)
+                    / max(1.0 - self.phase_accel_torque_threshold_ratio, 1e-8),
+                    0.0,
+                    1.0,
+                )
+            ) * (1.0 - launch_phase_gate)
+            decel_phase_gate = 1.0 if decel_context else 0.0
+            cruise_phase_gate = (1.0 - decel_phase_gate) * (1.0 - launch_phase_gate) * float(
+                np.clip(
+                    (self.phase_accel_torque_threshold_ratio - ref_positive_torque_ratio)
+                    / max(self.phase_accel_torque_threshold_ratio, 1e-8),
+                    0.0,
+                    1.0,
+                )
+            )
+            efficiency_phase_scale = (
+                self.efficiency_cruise_reward_scale * cruise_phase_gate
+                + self.efficiency_accel_reward_scale * accel_phase_gate
+                + self.efficiency_decel_reward_scale * decel_phase_gate
+            )
+            efficiency_term = (
+                self.torque_eff_coef
+                * effective_energy_weight
+                * track_gate
+                * efficiency_phase_scale
+                * torque_eff_gain
+            )
             ref_torque_idx = float(self.reference["torque_cmd"][min(idx, self.horizon - 1)])
             ref_rpm_idx = ref_speed * self.scenario.rpm_per_mps
             agent_eta = float(self.scenario.efficiency(self.vehicle["torque"], self.vehicle["rpm"]))
             ref_eta = float(self.scenario.efficiency(ref_torque_idx, ref_rpm_idx))
             eta_delta = float(np.clip(agent_eta - ref_eta, -0.16, 0.16))
-            efficiency_direct_reward = self.efficiency_direct_reward_coef * track_gate * eta_delta
+            efficiency_direct_reward = (
+                self.efficiency_direct_reward_coef
+                * track_gate
+                * efficiency_phase_scale
+                * eta_delta
+            )
             eff_load_gate = float(
                 np.clip(
-                    max(abs(ref_torque_idx), abs(self.vehicle["torque"])) / max(0.35 * self.max_torque, 1e-8),
+                    (
+                        max(abs(ref_torque_idx), abs(self.vehicle["torque"]))
+                        - self.efficiency_load_gate_floor_ratio * self.max_torque
+                    )
+                    / max((0.35 - self.efficiency_load_gate_floor_ratio) * self.max_torque, 1e-8),
                     0.0,
                     1.0,
                 )
@@ -2368,6 +2582,7 @@ class DriverReferenceEnergyEnv:
                 eff_gain_coef
                 * effective_energy_weight
                 * track_gate
+                * efficiency_phase_scale
                 * eff_load_gate
                 * max(0.0, eta_delta)
             )
@@ -2375,6 +2590,7 @@ class DriverReferenceEnergyEnv:
                 eff_penalty_coef
                 * effective_energy_weight
                 * track_gate
+                * efficiency_phase_scale
                 * eff_load_gate
                 * max(0.0, -eta_delta)
             )
@@ -2402,6 +2618,7 @@ class DriverReferenceEnergyEnv:
             regen_target = 1.0
             regen_recover_gain = 0.0
         follow_penalty = 0.0
+        launch_negative_torque_penalty = 0.0
         if self.mode == "energy":
             follow_coef = self.driver_follow_coef
             if is_normal_style:
@@ -2415,6 +2632,39 @@ class DriverReferenceEnergyEnv:
                 elif decel_context:
                     follow_coef *= 1.05
             follow_penalty = follow_coef * abs(torque_cmd - ref_torque) / max(self.max_torque, 1e-8)
+            launch_phase_gate = float(
+                np.clip(
+                    (self.launch_progress_end - progress_ratio) / max(self.launch_progress_end, 1e-8),
+                    0.0,
+                    1.0,
+                )
+            )
+            launch_drive_gate = float(
+                (not decel_context)
+                and (not coast_allowed)
+                and (ref_torque > 0.10 * self.max_torque)
+            )
+            launch_negative_gap = max(
+                0.0,
+                ref_torque - torque_cmd - self.launch_negative_torque_deadband_ratio * self.max_torque,
+            ) / max(self.max_torque, 1e-8)
+            if launch_phase_gate > 0.0 and launch_drive_gate > 0.5 and launch_negative_gap > 1e-10:
+                self.launch_negative_torque_streak = min(self.launch_negative_torque_streak + 1, 8)
+            else:
+                self.launch_negative_torque_streak = max(self.launch_negative_torque_streak - 1, 0)
+            launch_negative_streak_scale = (
+                1.0 + self.launch_negative_torque_streak_gain * max(0, self.launch_negative_torque_streak - 1)
+            )
+            launch_negative_torque_penalty = (
+                self.launch_negative_torque_penalty_coef
+                * self.launch_negative_torque_phase_scale
+                * launch_phase_gate
+                * launch_drive_gate
+                * launch_negative_streak_scale
+                * launch_negative_gap
+            )
+        else:
+            self.launch_negative_torque_streak = 0
         coast_bonus = 0.0
         if self.mode == "energy" and coast_allowed:
             torque_load = min(max(ref_torque, 0.0) / max(self.max_torque, 1e-8), 0.55)
@@ -2422,6 +2672,8 @@ class DriverReferenceEnergyEnv:
 
         speed_violation = max(0.0, abs(speed_err) - self.constraint_speed_tol)
         dist_violation = max(0.0, abs(dist_err) - self.constraint_dist_tol)
+        self.segment_speed_err_hist.append(float(speed_err))
+        self.segment_dist_err_hist.append(float(dist_err))
         neg_speed_bias = 0.0
         neg_dist_bias = 0.0
         lag_norm_speed = 0.0
@@ -2430,8 +2682,76 @@ class DriverReferenceEnergyEnv:
         isochronous_penalty = 0.0
         isochronous_constraint_cost = 0.0
         window_energy_constraint_cost = float(np.clip(window_energy_constraint_cost, 0.0, self.constraint_cost_clip))
+        segment_speed_constraint_cost = 0.0
+        segment_dist_constraint_cost = 0.0
         rel_speed_bias = 0.0
         rel_dist_bias = 0.0
+        segment_speed_abs_mean = 0.0
+        segment_dist_abs_mean = 0.0
+        if len(self.segment_speed_err_hist) >= max(4, int(self.segment_tracking_horizon) // 2):
+            segment_speed_arr = np.asarray(self.segment_speed_err_hist, dtype=np.float32)
+            segment_dist_arr = np.asarray(self.segment_dist_err_hist, dtype=np.float32)
+            segment_speed_abs_mean = float(np.mean(np.abs(segment_speed_arr)))
+            segment_dist_abs_mean = float(np.mean(np.abs(segment_dist_arr)))
+            segment_speed_bias_mean = float(-np.mean(segment_speed_arr))
+            segment_dist_bias_mean = float(-np.mean(segment_dist_arr))
+            segment_speed_abs_excess = max(
+                0.0,
+                segment_speed_abs_mean - self.segment_speed_abs_tol_ratio * self.constraint_speed_tol,
+            )
+            segment_dist_abs_excess = max(
+                0.0,
+                segment_dist_abs_mean - self.segment_dist_abs_tol_ratio * self.constraint_dist_tol,
+            )
+            segment_speed_bias_excess = max(
+                0.0,
+                segment_speed_bias_mean - self.segment_speed_bias_tol_ratio * self.constraint_speed_tol,
+            )
+            segment_dist_bias_excess = max(
+                0.0,
+                segment_dist_bias_mean - self.segment_dist_bias_tol_ratio * self.constraint_dist_tol,
+            )
+            segment_tracking_excess = max(
+                segment_speed_abs_excess / max(self.constraint_speed_tol, 1e-8),
+                segment_dist_abs_excess / max(self.constraint_dist_tol, 1e-8),
+                0.75 * segment_speed_bias_excess / max(self.constraint_speed_tol, 1e-8),
+                0.75 * segment_dist_bias_excess / max(self.constraint_dist_tol, 1e-8),
+            )
+            if self.mode == "energy" and segment_tracking_excess > 1e-10:
+                self.segment_tracking_streak = min(self.segment_tracking_streak + 1, 8)
+            else:
+                self.segment_tracking_streak = max(self.segment_tracking_streak - 1, 0)
+            segment_tracking_gate = float(
+                np.clip(
+                    (progress_ratio - self.segment_tracking_gate_progress)
+                    / max(1.0 - self.segment_tracking_gate_progress, 1e-8),
+                    0.0,
+                    1.0,
+                )
+            )
+            segment_streak_scale = (
+                1.0 + self.segment_tracking_streak_gain * max(0, self.segment_tracking_streak - 1)
+            )
+            segment_speed_constraint_cost = (
+                self.segment_tracking_constraint_scale
+                * segment_tracking_gate
+                * segment_streak_scale
+                * (
+                    segment_speed_abs_excess / max(self.constraint_speed_tol, 1e-8)
+                    + 0.55 * segment_speed_bias_excess / max(self.constraint_speed_tol, 1e-8)
+                )
+            )
+            segment_dist_constraint_cost = (
+                self.segment_tracking_constraint_scale
+                * segment_tracking_gate
+                * segment_streak_scale
+                * (
+                    segment_dist_abs_excess / max(self.constraint_dist_tol, 1e-8)
+                    + 0.45 * segment_dist_bias_excess / max(self.constraint_dist_tol, 1e-8)
+                )
+            )
+        else:
+            self.segment_tracking_streak = max(self.segment_tracking_streak - 1, 0)
         if self.mode == "energy":
             lag_norm_speed = max(0.0, -speed_err) / max(self.constraint_speed_tol, 1e-8)
             lag_norm_dist = max(0.0, -dist_err) / max(self.constraint_dist_tol, 1e-8)
@@ -2515,6 +2835,9 @@ class DriverReferenceEnergyEnv:
                 )
             )
             underspeed_constraint_cost += 0.20 * isochronous_constraint_cost
+            underspeed_constraint_cost += (
+                self.launch_negative_torque_constraint_scale * launch_negative_torque_penalty
+            )
         else:
             lag_penalty = 0.0
             neg_bias_penalty = 0.0
@@ -2523,11 +2846,13 @@ class DriverReferenceEnergyEnv:
             speed_violation / max(self.constraint_speed_tol, 1e-8)
             + 0.50 * neg_speed_bias / max(self.constraint_speed_tol, 1e-8)
             + 0.35 * max(0.0, lag_norm_speed - 0.80) ** 2
+            + segment_speed_constraint_cost
         )
         dist_constraint_cost = (
             dist_violation / max(self.constraint_dist_tol, 1e-8)
             + 0.35 * neg_dist_bias / max(self.constraint_dist_tol, 1e-8)
             + 0.25 * max(0.0, lag_norm_dist - 0.80) ** 2
+            + segment_dist_constraint_cost
         )
         smooth_constraint_cost = (
             max(0.0, abs(residual - prev_residual) / max(self.constraint_residual_delta_tol, 1e-8) - 1.0)
@@ -2564,6 +2889,7 @@ class DriverReferenceEnergyEnv:
                 + window_energy_reward
                 + coast_bonus
                 - follow_penalty
+                - launch_negative_torque_penalty
                 - lag_penalty
             )
 
@@ -2709,6 +3035,13 @@ class DriverReferenceEnergyEnv:
             "lag_penalty": lag_penalty,
             "neg_bias_penalty": neg_bias_penalty,
             "follow_penalty": follow_penalty,
+            "launch_negative_torque_penalty": float(launch_negative_torque_penalty),
+            "launch_negative_torque_streak": int(self.launch_negative_torque_streak),
+            "segment_speed_constraint_cost": float(segment_speed_constraint_cost),
+            "segment_dist_constraint_cost": float(segment_dist_constraint_cost),
+            "segment_speed_abs_mean": float(segment_speed_abs_mean),
+            "segment_dist_abs_mean": float(segment_dist_abs_mean),
+            "segment_tracking_streak": int(self.segment_tracking_streak),
             "coast_bonus": coast_bonus,
             "coast_smooth_penalty": coast_smooth_penalty,
             "agent_eta": agent_eta,

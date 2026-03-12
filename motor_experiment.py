@@ -218,8 +218,8 @@ def run_experiment():
 
     actor_lr = 6e-5
     critic_lr = 3e-4
-    track_episodes = 90 if fast_run else 170
-    energy_episodes = 140 if fast_run else 220
+    track_episodes = 100 if fast_run else 170
+    energy_episodes = 170 if fast_run else 220
     if long_run:
         track_episodes = int(os.getenv("TRACK_EPISODES", "280"))
         energy_episodes = int(os.getenv("ENERGY_EPISODES", "420"))
@@ -234,7 +234,7 @@ def run_experiment():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    horizon = 220
+    horizon = 330
     dt = 0.1
     max_speed_mps = 80.0 / MPS_TO_KMH
     num_train_roads = 5 if fast_run else 8
@@ -1808,6 +1808,8 @@ def run_experiment():
         front_half_saving_each = []
         back_half_saving_each = []
         front_back_gap_each = []
+        worst_segment_speed_mae_each = []
+        worst_segment_dist_mae_each = []
         worst_window_saving_each = []
         negative_window_ratio_each = []
         torque_delta_each = []
@@ -1891,6 +1893,8 @@ def run_experiment():
             front_half_saving_each.append(metrics.get("front_half_saving_pct", 0.0))
             back_half_saving_each.append(metrics.get("back_half_saving_pct", 0.0))
             front_back_gap_each.append(metrics.get("front_back_saving_gap_pct", 0.0))
+            worst_segment_speed_mae_each.append(metrics.get("worst_segment_speed_mae", 0.0))
+            worst_segment_dist_mae_each.append(metrics.get("worst_segment_dist_mae", 0.0))
             worst_window_saving_each.append(metrics.get("worst_window_saving_pct", 0.0))
             negative_window_ratio_each.append(metrics.get("negative_window_ratio", 0.0))
             torque_delta_each.append(float(rollout["torque_delta_mean"]))
@@ -1949,6 +1953,8 @@ def run_experiment():
         seed_front_half_saving = float(np.mean(front_half_saving_each))
         seed_back_half_saving = float(np.mean(back_half_saving_each))
         seed_front_back_saving_gap = float(np.mean(front_back_gap_each))
+        seed_worst_segment_speed_mae = float(np.max(worst_segment_speed_mae_each)) if len(worst_segment_speed_mae_each) > 0 else 0.0
+        seed_worst_segment_dist_mae = float(np.max(worst_segment_dist_mae_each)) if len(worst_segment_dist_mae_each) > 0 else 0.0
         seed_worst_window_saving = float(np.min(worst_window_saving_each)) if len(worst_window_saving_each) > 0 else 0.0
         seed_negative_window_ratio = float(np.mean(negative_window_ratio_each))
         seed_torque_delta = float(np.mean(torque_delta_each))
@@ -2056,8 +2062,9 @@ def run_experiment():
         seed_slow_bias_penalty = 0.65 * speed_bias_excess + 0.35 * dist_bias_excess
         seed_window_payback_penalty = (
             0.14 * max(0.0, -seed_worst_window_saving)
-            + 0.45 * seed_negative_window_ratio
-            + 0.10 * seed_front_back_saving_gap
+            + 0.48 * seed_negative_window_ratio
+            + 0.12 * seed_front_back_saving_gap
+            + 0.08 * max(0.0, 0.10 - seed_back_half_saving)
         )
         seed_stress_penalty = (
             0.08 * max(0.0, 0.12 - seed_stress_saving_iso_epd)
@@ -2150,6 +2157,8 @@ def run_experiment():
             "front_half_saving_pct": seed_front_half_saving,
             "back_half_saving_pct": seed_back_half_saving,
             "front_back_saving_gap_pct": seed_front_back_saving_gap,
+            "worst_segment_speed_mae": seed_worst_segment_speed_mae,
+            "worst_segment_dist_mae": seed_worst_segment_dist_mae,
             "worst_window_saving_pct": seed_worst_window_saving,
             "negative_window_ratio": seed_negative_window_ratio,
             "window_payback_penalty_pct": float(seed_window_payback_penalty),
@@ -2392,6 +2401,8 @@ def run_experiment():
     front_half_saving_list = np.array([x.get("front_half_saving_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
     back_half_saving_list = np.array([x.get("back_half_saving_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
     front_back_gap_list = np.array([x.get("front_back_saving_gap_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
+    worst_segment_speed_mae_list = np.array([x.get("worst_segment_speed_mae", 0.0) for x in eval_stats_list], dtype=np.float32)
+    worst_segment_dist_mae_list = np.array([x.get("worst_segment_dist_mae", 0.0) for x in eval_stats_list], dtype=np.float32)
     worst_window_saving_list = np.array([x.get("worst_window_saving_pct", 0.0) for x in eval_stats_list], dtype=np.float32)
     negative_window_ratio_list = np.array([x.get("negative_window_ratio", 0.0) for x in eval_stats_list], dtype=np.float32)
     torque_delta_list = np.array([x["torque_delta_mean"] for x in eval_stats_list], dtype=np.float32)
@@ -2471,6 +2482,11 @@ def run_experiment():
         f"Saving front/back/gap mean +- std: "
         f"{front_half_saving_list.mean():.2f}% / {back_half_saving_list.mean():.2f}% / "
         f"{front_back_gap_list.mean():.2f}% +- {front_back_gap_list.std():.2f}%"
+    )
+    print(
+        f"Worst segment speed/dist MAE mean +- std: "
+        f"{worst_segment_speed_mae_list.mean():.3f} +- {worst_segment_speed_mae_list.std():.3f} / "
+        f"{worst_segment_dist_mae_list.mean():.3f} +- {worst_segment_dist_mae_list.std():.3f}"
     )
     print(
         f"Worst window saving mean +- std: {worst_window_saving_list.mean():.2f}% +- {worst_window_saving_list.std():.2f}%, "
@@ -2614,6 +2630,10 @@ def run_experiment():
         "back_half_saving_std_pct": float(back_half_saving_list.std()),
         "front_back_saving_gap_mean_pct": float(front_back_gap_list.mean()),
         "front_back_saving_gap_std_pct": float(front_back_gap_list.std()),
+        "worst_segment_speed_mae_mean": float(worst_segment_speed_mae_list.mean()),
+        "worst_segment_speed_mae_std": float(worst_segment_speed_mae_list.std()),
+        "worst_segment_dist_mae_mean": float(worst_segment_dist_mae_list.mean()),
+        "worst_segment_dist_mae_std": float(worst_segment_dist_mae_list.std()),
         "worst_window_saving_mean_pct": float(worst_window_saving_list.mean()),
         "worst_window_saving_std_pct": float(worst_window_saving_list.std()),
         "negative_window_ratio_mean": float(negative_window_ratio_list.mean()),

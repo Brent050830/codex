@@ -148,6 +148,32 @@ def evaluate_rollout(
         ref_step_distance[split_idx:n_steps],
     )
     front_back_saving_gap_pct = float(abs(front_half_saving_pct - back_half_saving_pct))
+    speed_series = np.array(rollout.get("speed", []), dtype=np.float32)
+    ref_speed_series = np.array(rollout.get("ref_speed", []), dtype=np.float32)
+    dist_series = np.array(rollout.get("distance", []), dtype=np.float32)
+    ref_dist_series = np.array(rollout.get("ref_distance", []), dtype=np.float32)
+    seg_steps = int(max(6, rollout.get("segment_metric_horizon", 12)))
+    worst_segment_speed_mae = 0.0
+    worst_segment_dist_mae = 0.0
+    if (
+        speed_series.size > 1
+        and ref_speed_series.size > 1
+        and dist_series.size > 1
+        and ref_dist_series.size > 1
+    ):
+        usable_steps = int(min(speed_series.size, ref_speed_series.size, dist_series.size, ref_dist_series.size) - 1)
+        if usable_steps >= seg_steps:
+            speed_err_series = np.abs(speed_series[1 : usable_steps + 1] - ref_speed_series[1 : usable_steps + 1])
+            dist_err_series = np.abs(dist_series[1 : usable_steps + 1] - ref_dist_series[1 : usable_steps + 1])
+            speed_mae_windows = []
+            dist_mae_windows = []
+            for start in range(0, usable_steps - seg_steps + 1):
+                end = start + seg_steps
+                speed_mae_windows.append(float(np.mean(speed_err_series[start:end])))
+                dist_mae_windows.append(float(np.mean(dist_err_series[start:end])))
+            if speed_mae_windows:
+                worst_segment_speed_mae = float(max(speed_mae_windows))
+                worst_segment_dist_mae = float(max(dist_mae_windows))
 
     driver_torque_src = eval_ref["torque"] if "torque" in eval_ref else eval_ref["torque_cmd"]
     driver_torque_arr = np.array(driver_torque_src, dtype=np.float32)
@@ -213,6 +239,9 @@ def evaluate_rollout(
         "front_half_saving_pct": float(front_half_saving_pct),
         "back_half_saving_pct": float(back_half_saving_pct),
         "front_back_saving_gap_pct": float(front_back_saving_gap_pct),
+        "segment_metric_horizon": int(seg_steps),
+        "worst_segment_speed_mae": float(worst_segment_speed_mae),
+        "worst_segment_dist_mae": float(worst_segment_dist_mae),
         "worst_window_saving_pct": float(worst_window_saving_pct),
         "negative_window_ratio": float(negative_window_ratio),
         "speed_bias": float(signed_speed_diff),
@@ -298,7 +327,7 @@ def train_stage(
     lagrange_lr_net=0.08,
     lagrange_lr_projection=0.035,
     lagrange_lr_underspeed=0.08,
-    lagrange_lr_window_energy=0.08,
+    lagrange_lr_window_energy=0.14,
     lagrange_update_controller="integral",
     lagrange_pid_kp_scale=0.35,
     lagrange_pid_kd_scale=0.10,
@@ -1022,6 +1051,8 @@ def rollout_agent_episode(env, agent):
     step_distance = []
     speed_err_abs = []
     dist_err_abs = []
+    segment_speed_constraint_cost = []
+    segment_dist_constraint_cost = []
 
     done = False
     while not done:
@@ -1058,6 +1089,8 @@ def rollout_agent_episode(env, agent):
         step_distance.append(float(info["step_distance"]))
         speed_err_abs.append(abs(info["speed_error"]))
         dist_err_abs.append(abs(info["distance_error"]))
+        segment_speed_constraint_cost.append(float(info.get("segment_speed_constraint_cost", 0.0)))
+        segment_dist_constraint_cost.append(float(info.get("segment_dist_constraint_cost", 0.0)))
         state = next_state
 
     net_energy = total_energy_accounted - total_recover
@@ -1123,10 +1156,17 @@ def rollout_agent_episode(env, agent):
         "avg_speed": float(np.mean(speed[1:])),
         "final_distance": float(distance[-1]),
         "launch_metric_horizon": int(launch_metric_horizon),
+        "segment_metric_horizon": int(getattr(env, "segment_tracking_horizon", 12)),
         "launch_speed_bias_mean": float(launch_speed_bias_mean),
         "launch_dist_bias_mean": float(launch_dist_bias_mean),
         "launch_ref_speed_mean": float(launch_ref_speed_mean),
         "launch_ref_distance_mean": float(launch_ref_distance_mean),
+        "segment_speed_constraint_cost_mean": float(
+            np.mean(segment_speed_constraint_cost) if len(segment_speed_constraint_cost) > 0 else 0.0
+        ),
+        "segment_dist_constraint_cost_mean": float(
+            np.mean(segment_dist_constraint_cost) if len(segment_dist_constraint_cost) > 0 else 0.0
+        ),
         "torque_delta_mean": torque_delta_mean,
         "torque_jerk_mean": torque_jerk_mean,
         "action_projection_l1_mean": float(
