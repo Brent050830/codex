@@ -724,6 +724,15 @@ class DriverReferenceEnergyEnv:
         "segment_dist_bias_tol_ratio": 0.22,
         "segment_tracking_constraint_scale": 0.72,
         "segment_tracking_streak_gain": 0.28,
+        "segment_saving_reward_coef": 0.18,
+        "segment_negative_saving_penalty_coef": 0.30,
+        "segment_speed_bias_penalty_coef": 0.14,
+        "segment_dist_bias_penalty_coef": 0.12,
+        "segment_negative_saving_streak_gain": 0.45,
+        "segment_negative_bias_streak_gain": 0.35,
+        "global_energy_term_scale": 0.45,
+        "global_bias_penalty_scale": 0.55,
+        "global_isochronous_penalty_scale": 0.45,
         "window_positive_reward_coef": 0.018,
         "window_negative_reward_penalty_coef": 0.06,
         "window_constraint_scale": 1.20,
@@ -803,6 +812,15 @@ class DriverReferenceEnergyEnv:
             "segment_dist_bias_tol_ratio": 0.20,
             "segment_tracking_constraint_scale": 0.76,
             "segment_tracking_streak_gain": 0.30,
+            "segment_saving_reward_coef": 0.17,
+            "segment_negative_saving_penalty_coef": 0.34,
+            "segment_speed_bias_penalty_coef": 0.12,
+            "segment_dist_bias_penalty_coef": 0.10,
+            "segment_negative_saving_streak_gain": 0.52,
+            "segment_negative_bias_streak_gain": 0.38,
+            "global_energy_term_scale": 0.40,
+            "global_bias_penalty_scale": 0.60,
+            "global_isochronous_penalty_scale": 0.50,
             "window_positive_reward_coef": 0.014,
             "window_negative_reward_penalty_coef": 0.06,
             "window_constraint_scale": 1.28,
@@ -874,6 +892,15 @@ class DriverReferenceEnergyEnv:
             "segment_dist_bias_tol_ratio": 0.18,
             "segment_tracking_constraint_scale": 0.88,
             "segment_tracking_streak_gain": 0.34,
+            "segment_saving_reward_coef": 0.22,
+            "segment_negative_saving_penalty_coef": 0.40,
+            "segment_speed_bias_penalty_coef": 0.18,
+            "segment_dist_bias_penalty_coef": 0.15,
+            "segment_negative_saving_streak_gain": 0.60,
+            "segment_negative_bias_streak_gain": 0.45,
+            "global_energy_term_scale": 0.32,
+            "global_bias_penalty_scale": 0.42,
+            "global_isochronous_penalty_scale": 0.36,
             "window_positive_reward_coef": 0.014,
             "window_negative_reward_penalty_coef": 0.07,
             "window_constraint_scale": 1.45,
@@ -953,6 +980,15 @@ class DriverReferenceEnergyEnv:
             "segment_dist_bias_tol_ratio": 0.24,
             "segment_tracking_constraint_scale": 0.68,
             "segment_tracking_streak_gain": 0.24,
+            "segment_saving_reward_coef": 0.20,
+            "segment_negative_saving_penalty_coef": 0.28,
+            "segment_speed_bias_penalty_coef": 0.13,
+            "segment_dist_bias_penalty_coef": 0.11,
+            "segment_negative_saving_streak_gain": 0.40,
+            "segment_negative_bias_streak_gain": 0.32,
+            "global_energy_term_scale": 0.42,
+            "global_bias_penalty_scale": 0.50,
+            "global_isochronous_penalty_scale": 0.42,
             "window_positive_reward_coef": 0.018,
             "window_negative_reward_penalty_coef": 0.05,
             "window_constraint_scale": 1.18,
@@ -1104,6 +1140,15 @@ class DriverReferenceEnergyEnv:
         self.segment_dist_bias_tol_ratio = 0.22
         self.segment_tracking_constraint_scale = 0.72
         self.segment_tracking_streak_gain = 0.28
+        self.segment_saving_reward_coef = 0.18
+        self.segment_negative_saving_penalty_coef = 0.30
+        self.segment_speed_bias_penalty_coef = 0.14
+        self.segment_dist_bias_penalty_coef = 0.12
+        self.segment_negative_saving_streak_gain = 0.45
+        self.segment_negative_bias_streak_gain = 0.35
+        self.global_energy_term_scale = 0.45
+        self.global_bias_penalty_scale = 0.55
+        self.global_isochronous_penalty_scale = 0.45
         self.window_positive_reward_coef = 0.035
         self.window_negative_reward_penalty_coef = 0.12
         self.constraint_cost_clip = 8.0
@@ -1802,6 +1847,8 @@ class DriverReferenceEnergyEnv:
         self.segment_speed_err_hist = deque(maxlen=int(self.segment_tracking_horizon))
         self.segment_dist_err_hist = deque(maxlen=int(self.segment_tracking_horizon))
         self.segment_tracking_streak = 0
+        self.segment_negative_saving_streak = 0
+        self.segment_negative_bias_streak = 0
         self.launch_negative_torque_streak = 0
         self.driver_pid_state = self.scenario.init_driver_pid_state(style_name=self.scenario.driver_style)
         self.driver_cmd_now = float(self.reference["torque_cmd"][0]) if len(self.reference["torque_cmd"]) > 0 else 0.0
@@ -2490,6 +2537,7 @@ class DriverReferenceEnergyEnv:
                 - self.energy_negative_penalty_coef * negative_energy_gain
             )
         )
+        energy_term *= self.global_energy_term_scale
         if self.mode == "energy":
             neg_coef = self.energy_neg_coef_good if tracking_margin <= 1.0 else self.energy_neg_coef_bad
             energy_term -= (
@@ -2684,10 +2732,14 @@ class DriverReferenceEnergyEnv:
         window_energy_constraint_cost = float(np.clip(window_energy_constraint_cost, 0.0, self.constraint_cost_clip))
         segment_speed_constraint_cost = 0.0
         segment_dist_constraint_cost = 0.0
+        segment_objective_reward = 0.0
+        segment_negative_saving_excess = 0.0
         rel_speed_bias = 0.0
         rel_dist_bias = 0.0
         segment_speed_abs_mean = 0.0
         segment_dist_abs_mean = 0.0
+        segment_speed_bias_mean = 0.0
+        segment_dist_bias_mean = 0.0
         if len(self.segment_speed_err_hist) >= max(4, int(self.segment_tracking_horizon) // 2):
             segment_speed_arr = np.asarray(self.segment_speed_err_hist, dtype=np.float32)
             segment_dist_arr = np.asarray(self.segment_dist_err_hist, dtype=np.float32)
@@ -2732,6 +2784,42 @@ class DriverReferenceEnergyEnv:
             segment_streak_scale = (
                 1.0 + self.segment_tracking_streak_gain * max(0, self.segment_tracking_streak - 1)
             )
+            segment_negative_saving_excess = max(0.0, -rolling_window_saving)
+            if self.mode == "energy" and segment_negative_saving_excess > 1e-10:
+                self.segment_negative_saving_streak = min(self.segment_negative_saving_streak + 1, 8)
+            else:
+                self.segment_negative_saving_streak = max(self.segment_negative_saving_streak - 1, 0)
+            if self.mode == "energy" and (
+                segment_speed_bias_excess > 1e-10 or segment_dist_bias_excess > 1e-10
+            ):
+                self.segment_negative_bias_streak = min(self.segment_negative_bias_streak + 1, 8)
+            else:
+                self.segment_negative_bias_streak = max(self.segment_negative_bias_streak - 1, 0)
+            segment_negative_saving_streak_scale = (
+                1.0
+                + self.segment_negative_saving_streak_gain
+                * max(0, self.segment_negative_saving_streak - 1)
+            )
+            segment_negative_bias_streak_scale = (
+                1.0
+                + self.segment_negative_bias_streak_gain
+                * max(0, self.segment_negative_bias_streak - 1)
+            )
+            if self.mode == "energy":
+                segment_objective_reward = segment_tracking_gate * (
+                    self.segment_saving_reward_coef * max(0.0, rolling_window_saving)
+                    - self.segment_negative_saving_penalty_coef
+                    * segment_negative_saving_streak_scale
+                    * segment_negative_saving_excess
+                    - self.segment_speed_bias_penalty_coef
+                    * segment_negative_bias_streak_scale
+                    * segment_speed_bias_excess
+                    / max(self.constraint_speed_tol, 1e-8)
+                    - self.segment_dist_bias_penalty_coef
+                    * segment_negative_bias_streak_scale
+                    * segment_dist_bias_excess
+                    / max(self.constraint_dist_tol, 1e-8)
+                )
             segment_speed_constraint_cost = (
                 self.segment_tracking_constraint_scale
                 * segment_tracking_gate
@@ -2752,6 +2840,8 @@ class DriverReferenceEnergyEnv:
             )
         else:
             self.segment_tracking_streak = max(self.segment_tracking_streak - 1, 0)
+            self.segment_negative_saving_streak = max(self.segment_negative_saving_streak - 1, 0)
+            self.segment_negative_bias_streak = max(self.segment_negative_bias_streak - 1, 0)
         if self.mode == "energy":
             lag_norm_speed = max(0.0, -speed_err) / max(self.constraint_speed_tol, 1e-8)
             lag_norm_dist = max(0.0, -dist_err) / max(self.constraint_dist_tol, 1e-8)
@@ -2765,13 +2855,7 @@ class DriverReferenceEnergyEnv:
             )
             neg_speed_bias = max(0.0, -(speed_err + self.neg_bias_speed_deadband_mps))
             neg_dist_bias = max(0.0, -(dist_err + self.neg_bias_dist_deadband_m))
-            neg_bias_penalty = self.neg_bias_penalty_coef * (
-                (neg_speed_bias / max(self.constraint_speed_tol, 1e-8))
-                + 0.45 * (neg_dist_bias / max(self.constraint_dist_tol, 1e-8))
-            )
-            # 在轨迹后段施加更强的抗慢开压力。
-            bias_progress_scale = float(np.clip((progress_ratio - 0.55) / 0.45, 0.0, 1.0))
-            neg_bias_penalty *= bias_progress_scale
+            neg_bias_penalty = 0.0
             rel_speed_bias = speed_err / max(ref_speed, 1e-8)
             rel_dist_bias = dist_err / max(ref_dist, 1.0)
             speed_debt_in = self.isochronous_debt_speed_gain * neg_speed_bias
@@ -2820,38 +2904,19 @@ class DriverReferenceEnergyEnv:
                     + 1.10 * underspeed_rel_dist / max(self.constraint_underspeed_rel_dist_tol, 1e-8)
                 )
             )
-            underspeed_constraint_cost = underspeed_stage_gate * (
-                underspeed_rel_speed / max(self.constraint_underspeed_rel_speed_tol, 1e-8)
-                + 0.65 * underspeed_rel_dist / max(self.constraint_underspeed_rel_dist_tol, 1e-8)
-            )
-            isochronous_constraint_cost = self.isochronous_cost_scale * debt_stage_gate * (
-                0.75 * isochronous_speed_norm
-                + 1.25 * isochronous_dist_norm
-                + 0.60
-                * late_stage_gate
-                * (
-                    underspeed_rel_speed / max(self.constraint_underspeed_rel_speed_tol, 1e-8)
-                    + 1.15 * underspeed_rel_dist / max(self.constraint_underspeed_rel_dist_tol, 1e-8)
-                )
-            )
-            underspeed_constraint_cost += 0.20 * isochronous_constraint_cost
-            underspeed_constraint_cost += (
-                self.launch_negative_torque_constraint_scale * launch_negative_torque_penalty
-            )
+            isochronous_penalty *= self.global_isochronous_penalty_scale
+            underspeed_constraint_cost = 0.0
+            isochronous_constraint_cost = 0.0
         else:
             lag_penalty = 0.0
             neg_bias_penalty = 0.0
 
         speed_constraint_cost = (
             speed_violation / max(self.constraint_speed_tol, 1e-8)
-            + 0.50 * neg_speed_bias / max(self.constraint_speed_tol, 1e-8)
-            + 0.35 * max(0.0, lag_norm_speed - 0.80) ** 2
             + segment_speed_constraint_cost
         )
         dist_constraint_cost = (
             dist_violation / max(self.constraint_dist_tol, 1e-8)
-            + 0.35 * neg_dist_bias / max(self.constraint_dist_tol, 1e-8)
-            + 0.25 * max(0.0, lag_norm_dist - 0.80) ** 2
             + segment_dist_constraint_cost
         )
         smooth_constraint_cost = (
@@ -2883,14 +2948,7 @@ class DriverReferenceEnergyEnv:
                 base_reward += bonus_val
         else:
             base_reward = float(
-                energy_term
-                + efficiency_term
-                + efficiency_direct_reward
-                + window_energy_reward
-                + coast_bonus
-                - follow_penalty
-                - launch_negative_torque_penalty
-                - lag_penalty
+                segment_objective_reward
             )
 
         reward = float(base_reward)
@@ -2943,10 +3001,6 @@ class DriverReferenceEnergyEnv:
                 + 1.15 * max(0.0, -dist_err) / max(self.constraint_dist_tol, 1e-8)
             )
             reward -= final_lag_penalty
-            if mean_speed_err <= self.constraint_speed_tol and mean_dist_err <= self.constraint_dist_tol:
-                reward += self.energy_weight * self.final_energy_pos_coef * final_energy_improve
-            elif final_energy_improve < 0.0:
-                reward += self.energy_weight * self.final_energy_neg_coef * final_energy_improve
             base_reward = float(reward)
 
         self.prev_residual = residual
@@ -3037,11 +3091,17 @@ class DriverReferenceEnergyEnv:
             "follow_penalty": follow_penalty,
             "launch_negative_torque_penalty": float(launch_negative_torque_penalty),
             "launch_negative_torque_streak": int(self.launch_negative_torque_streak),
+            "segment_negative_saving_excess": float(segment_negative_saving_excess),
+            "segment_negative_saving_streak": int(self.segment_negative_saving_streak),
+            "segment_negative_bias_streak": int(self.segment_negative_bias_streak),
             "segment_speed_constraint_cost": float(segment_speed_constraint_cost),
             "segment_dist_constraint_cost": float(segment_dist_constraint_cost),
             "segment_speed_abs_mean": float(segment_speed_abs_mean),
             "segment_dist_abs_mean": float(segment_dist_abs_mean),
+            "segment_speed_bias_mean": float(segment_speed_bias_mean),
+            "segment_dist_bias_mean": float(segment_dist_bias_mean),
             "segment_tracking_streak": int(self.segment_tracking_streak),
+            "segment_objective_reward": float(segment_objective_reward),
             "coast_bonus": coast_bonus,
             "coast_smooth_penalty": coast_smooth_penalty,
             "agent_eta": agent_eta,

@@ -515,10 +515,7 @@ def run_experiment():
         "smooth_delta_ratio_limit": 1.18,
         "smooth_jerk_ratio_limit": 1.25,
     }
-    if single_style_focus and (single_style_name == "normal"):
-        experiment_constraint_names = ("speed", "distance", "smoothness", "net_energy", "projection", "underspeed")
-    else:
-        experiment_constraint_names = ("speed", "distance", "smoothness", "net_energy", "projection")
+    experiment_constraint_names = ("speed", "distance", "smoothness", "net_energy", "projection")
 
     seed_list_env = os.getenv("SEED_LIST", "").strip()
     if seed_list_env:
@@ -2059,12 +2056,14 @@ def run_experiment():
         speed_bias_excess = max(0.0, -seed_speed_rel_bias - bias_excess_floor)
         dist_bias_excess = max(0.0, -seed_dist_rel_bias - bias_excess_floor)
         recover_shortfall = max(0.0, -seed_worst_recover_delta - recover_drop_tol_pct)
-        seed_slow_bias_penalty = 0.65 * speed_bias_excess + 0.35 * dist_bias_excess
+        seed_slow_bias_penalty = 0.0
         seed_window_payback_penalty = (
-            0.14 * max(0.0, -seed_worst_window_saving)
-            + 0.48 * seed_negative_window_ratio
-            + 0.12 * seed_front_back_saving_gap
-            + 0.08 * max(0.0, 0.10 - seed_back_half_saving)
+            0.08 * max(0.0, -seed_worst_window_saving)
+            + 0.70 * seed_negative_window_ratio
+            + 0.20 * seed_front_back_saving_gap
+            + 0.16 * max(0.0, 0.10 - seed_back_half_saving)
+            + 0.10 * max(0.0, seed_worst_segment_speed_mae - float(eval_limits_strict["speed_mae_limit"]))
+            + 0.03 * max(0.0, seed_worst_segment_dist_mae - float(eval_limits_strict["dist_mae_limit"]))
         )
         seed_stress_penalty = (
             0.08 * max(0.0, 0.12 - seed_stress_saving_iso_epd)
@@ -2078,8 +2077,7 @@ def run_experiment():
         if not seed_stress_smooth_ok:
             seed_stress_penalty += 0.08
         seed_bias_adjusted_metric = (
-            seed_robust_saving_joint
-            - 0.45 * seed_slow_bias_penalty
+            0.75 * seed_robust_saving_joint + 0.25 * seed_saving_iso_epd
             - 0.08 * recover_shortfall
             - seed_window_payback_penalty
             - seed_stress_penalty
@@ -2232,9 +2230,9 @@ def run_experiment():
             score -= 6.0
         if not seed_tracking_ok:
             score -= 220.0
-        fallback_score = score - 0.50 * seed_slow_bias_penalty - 0.08 * recover_shortfall
+        fallback_score = score - 0.08 * recover_shortfall
 
-        if seed_tracking_saving_ok and seed_bias_guard_ok:
+        if seed_tracking_saving_ok:
             # 硬约束选模：先优先保证低慢开偏差下的鲁棒节能，再比较平滑性。
             robust_gap = seed_bias_adjusted_metric - best_feasible_metric
             choose = False
